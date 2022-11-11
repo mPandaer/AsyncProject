@@ -15,6 +15,7 @@ import coil.request.ImageRequest
 import org.w3c.dom.Text
 import space.pandaer.asyncproject.R
 import space.pandaer.asyncproject.frontmoudel.model.Article
+import space.pandaer.asyncproject.frontmoudel.states.EditTextState
 import space.pandaer.asyncproject.frontmoudel.states.rememberArticleState
 import space.pandaer.asyncproject.usermoudel.model.User
 import space.pandaer.asyncproject.util.common.dateFormat
@@ -50,3 +51,4 @@ val testUser = User(
     email = "pandaer@gmail.com"
 )
 
+val testTextState = EditTextState()

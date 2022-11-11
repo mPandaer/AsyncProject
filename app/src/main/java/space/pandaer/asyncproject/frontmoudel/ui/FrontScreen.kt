@@ -2,23 +2,20 @@ package space.pandaer.asyncproject.frontmoudel.ui
 
 import android.annotation.SuppressLint
 import android.os.Build
+import android.provider.ContactsContract
+import android.util.Log
 import androidx.annotation.RequiresApi
-import androidx.compose.animation.*
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.modifier.modifierLocalConsumer
-import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -29,35 +26,102 @@ import space.pandaer.asyncproject.frontmoudel.states.ArticleState
 import space.pandaer.asyncproject.util.common.AvatarImage
 
 import space.pandaer.asyncproject.R
+import space.pandaer.asyncproject.frontmoudel.ArticleViewModel
 import space.pandaer.asyncproject.frontmoudel.model.Article
 import space.pandaer.asyncproject.frontmoudel.states.rememberArticleState
 import space.pandaer.asyncproject.util.test.testArticle
 import space.pandaer.asyncproject.util.test.testArticleList
+import androidx.lifecycle.viewmodel.compose.*
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import space.pandaer.asyncproject.basenetwork.DataState
+import space.pandaer.asyncproject.util.common.FailureScreen
+import space.pandaer.asyncproject.util.common.IconItem
+import space.pandaer.asyncproject.util.common.LoadingScreen
 
 
 sealed interface FrontScreenEvent {
     object NavigationToUserEvent : FrontScreenEvent
+    object NavigationToNewArticleEvent : FrontScreenEvent
     class NavigationToArticleDetailEvent(val id: Int) : FrontScreenEvent
 }
 
 @Preview
 @RequiresApi(Build.VERSION_CODES.O)
-@SuppressLint("UnusedMaterialScaffoldPaddingParameter")
 @Composable
-fun FrontScreen(onEvent: (FrontScreenEvent) -> Unit = {}) {
+fun FrontScreen(
+    viewModel: ArticleViewModel = viewModel(),
+    onEvent: (FrontScreenEvent) -> Unit = {}
+) {
+    val state: DataState by viewModel.allArticleState.collectAsState()
+    val createState by viewModel.createArticleState.collectAsState()
+    val scaffoldState = rememberScaffoldState()
+    val (visibilitySnackBar, setSnackBar) = remember {
+        mutableStateOf(false)
+    }
+    if (createState is DataState.Failure || createState is DataState.Success<*>) setSnackBar(true) else setSnackBar(
+        false
+    )
     Scaffold(
         Modifier
             .fillMaxSize()
-            .padding(horizontal = 8.dp), topBar = {
+            .padding(horizontal = 8.dp),
+        scaffoldState = scaffoldState,
+        topBar = {
             DashBroad {
                 onEvent(FrontScreenEvent.NavigationToUserEvent)
             }
-        }) {
-        ArticleList(Modifier.padding(top = it.calculateTopPadding())) {
-            onEvent(FrontScreenEvent.NavigationToArticleDetailEvent(1))
+        },
+        floatingActionButton = {
+            FloatingActionButton(onClick = { onEvent(FrontScreenEvent.NavigationToNewArticleEvent) }) {
+                Icon(imageVector = Icons.Default.Edit, contentDescription = "add new article")
+            }
         }
+    ) {
+
+
+        when (state) {
+            DataState.Waiting -> {
+                LaunchedEffect(key1 = state) {
+                    viewModel.getAllArticles()
+                }
+            }
+            DataState.Loading -> {
+                LoadingScreen()
+
+            }
+            is DataState.Failure -> {
+                val msg = (state as DataState.Failure).msg
+                FailureScreen(msg) {
+                    viewModel.reLoadingInList()
+                }
+            }
+            is DataState.Success<*> -> {
+                if ((state as DataState.Success<*>).data is List<*>) {
+                    val list = (state as DataState.Success<List<Article>>).data
+                    ArticleList(
+                        Modifier.padding(top = it.calculateTopPadding()),
+                        list = list
+                    ) { id ->
+                        onEvent(FrontScreenEvent.NavigationToArticleDetailEvent(id))
+                    }
+                    LaunchedEffect(visibilitySnackBar) {
+                        if (visibilitySnackBar) {
+                            Log.d("xixi", "显示sanckbar")
+                            val text =
+                                if (createState is DataState.Failure) "失败了：${(createState as DataState.Failure).msg}" else "成功了"
+                            scaffoldState.snackbarHostState.showSnackbar(message = text)
+                            viewModel.reLoadingInCreate() //防止数据错乱
+                        }
+                    }
+                }
+            }
+        }
+
+
     }
 }
+
 
 @Preview
 @Composable
@@ -70,9 +134,8 @@ fun DashBroad(onClick: () -> Unit = {}) {
                     .clickable { onClick() }
             )
             Text(
-                text = "Dash",
-                fontWeight = FontWeight.Bold,
-                fontSize = 36.sp,
+                text = "首页",
+                fontSize = 24.sp,
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.Center
             )
@@ -87,14 +150,14 @@ fun DashBroad(onClick: () -> Unit = {}) {
 fun ArticleList(
     modifier: Modifier = Modifier,
     list: List<Article?> = testArticleList,
-    onClick: () -> Unit = {}
+    onClick: (Int) -> Unit = {}
 ) {
     LazyColumn(modifier = modifier) {
         items(list) { article ->
             article?.let {
                 ItemArticle(
                     articleState = rememberArticleState(article = article),
-                    modifier = modifier.clickable { onClick() })
+                    modifier = modifier.clickable { onClick(article.id) })
             }
         }
     }
@@ -138,7 +201,7 @@ private fun UserInfo(articleState: ArticleState) {
 private fun ContentText(content: String) {
     Text(
         text = content,
-        fontSize = 14.sp,
+        fontSize = 12.sp,
         fontWeight = FontWeight.Light,
         overflow = TextOverflow.Ellipsis,
         maxLines = 9,
@@ -164,50 +227,4 @@ private fun ContentBottomBar() {
     }
 }
 
-@OptIn(ExperimentalAnimationApi::class)
-@Composable
-fun IconItem(
-    modifier: Modifier = Modifier.size(18.dp),
-    clicked: Boolean = false,
-    id: Int,
-    des: String,
-    onClick: (Boolean) -> Unit
-) {
-    var clickedState by remember {
-        mutableStateOf(clicked)
-    }
-    AnimatedContent(targetState = clickedState, transitionSpec = {
-        fadeIn(tween(1000)) with fadeOut(
-            tween(1000)
-        )
-    }, modifier = Modifier
-        .padding(4.dp)
-        .clip(RoundedCornerShape(8.dp))
-        .clickable {
-            clickedState = !clickedState
-            onClick(clickedState)
-        }) {
-        Box(Modifier.padding(4.dp)) {
-            if (clickedState) {
-                Icon(
-                    imageVector = ImageVector.vectorResource(id = id),
-                    contentDescription = "icon",
-                    tint = Color.Red,
-                    modifier = modifier
-                )
-            } else {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        imageVector = ImageVector.vectorResource(id = id),
-                        contentDescription = "icon",
-                        tint = Color.LightGray,
-                        modifier = modifier
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = des, color = Color.LightGray, fontSize = 10.sp)
-                }
-            }
-        }
 
-    }
-}

@@ -1,4 +1,4 @@
-package space.pandaer.asyncproject.frontmoudel.remote
+package space.pandaer.asyncproject.frontmoudel.datasource
 
 import retrofit2.http.Body
 import retrofit2.http.GET

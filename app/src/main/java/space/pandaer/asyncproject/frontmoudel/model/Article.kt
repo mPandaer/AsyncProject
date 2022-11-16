@@ -2,6 +2,9 @@ package space.pandaer.asyncproject.frontmoudel.model
 
 import android.os.Build
 import androidx.annotation.RequiresApi
+import androidx.room.ColumnInfo
+import androidx.room.Entity
+import androidx.room.PrimaryKey
 import com.google.gson.annotations.SerializedName
 import space.pandaer.asyncproject.util.common.dateFormat
 import java.time.LocalDateTime
@@ -9,12 +12,15 @@ import java.util.*
 
 
 //文章数据
+@Entity(tableName = "article")
 data class Article(
-    val id: Int,
+    @PrimaryKey(autoGenerate = true) val id: Int = 0,
     @SerializedName("avatar")
+    @ColumnInfo(name = "avatar_url")
     val avatarUrl: String,
     val title: String,
     @SerializedName("shortcount")
+    @ColumnInfo(name = "short_content")
     val shortContent: String,
     val content: String?,
     val date: String

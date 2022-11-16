@@ -1,4 +1,4 @@
-package space.pandaer.asyncproject.frontmoudel.remote
+package space.pandaer.asyncproject.frontmoudel.datasource
 
 import retrofit2.converter.gson.GsonConverterFactory
 import space.pandaer.asyncproject.basenetwork.ServiceFactory

@@ -19,6 +19,7 @@ class ArticleViewModel : ViewModel() {
     //文章仓库
     private val repository = ArticleRepository
 
+
     //文章列表数据流
     private val _allArticleState: MutableStateFlow<DataState> = MutableStateFlow(DataState.Waiting)
     val allArticleState : StateFlow<DataState>
@@ -53,11 +54,11 @@ class ArticleViewModel : ViewModel() {
         _allArticleState.value = DataState.Loading
         viewModelScope.launch {
             delay(500)
-            val list = repository.getAllArticle().articles
-            if (list == null) {
-                _allArticleState.value = DataState.Failure("文章列表为空")
+            val state = repository.getAllArticle()
+            if (state is DataState.Failure) {
+                _allArticleState.value = state
             }else{
-                _allArticleState.value = DataState.Success(list)
+                _allArticleState.value = state
             }
         }
     }
@@ -67,11 +68,11 @@ class ArticleViewModel : ViewModel() {
         _detailArticleState.value = DataState.Loading
         viewModelScope.launch {
             delay(500)
-            val article = repository.getSingleArticle(id).data
-            if (article == null) {
-                _detailArticleState.value = DataState.Failure("文章详情为空")
+            val state = repository.getSingleArticle(id)
+            if (state is DataState.Failure) {
+                _detailArticleState.value = state
             }else{
-                _detailArticleState.value = DataState.Success(article)
+                _detailArticleState.value = state
             }
         }
     }

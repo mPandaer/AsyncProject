@@ -1,8 +1,6 @@
 package space.pandaer.asyncproject.frontmoudel.ui
 
-import android.annotation.SuppressLint
 import android.os.Build
-import android.provider.ContactsContract
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.clickable
